@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { formatErrorMessage } from '../utils/helpers';
-import { ROUTES } from '../utils/constants';
-import { usePageTitle } from '../hooks/usePageTitle';
-import Input from '../components/Input';
-import Button from '../components/Button';
-import LoadingSpinner from '../components/LoadingSpinner';
-import ToastService from '../components/Toast';
+import { formatErrorMessage } from '../../../shared/utils/helpers';
+import { ROUTES } from '../../../app/routes';
+import { usePageTitle } from '../../../shared/hooks/usePageTitle';
+import Input from '../../../shared/components/Input';
+import Button from '../../../shared/components/Button';
+import LoadingSpinner from '../../../shared/components/LoadingSpinner';
+import ToastService from '../../../shared/components/Toast';
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();

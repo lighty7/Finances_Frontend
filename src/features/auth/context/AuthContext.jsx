@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getUser, getToken, setUser, setToken, clearAuth } from '../utils/helpers';
+import { getUser, getToken, setUser, setToken, clearAuth } from '../../../shared/utils/helpers';
 import * as authService from '../services/auth';
 
 const AuthContext = createContext(null);

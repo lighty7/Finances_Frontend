@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { formatErrorMessage, formatValidationErrors } from '../utils/helpers';
-import { ROUTES } from '../utils/constants';
-import { usePageTitle } from '../hooks/usePageTitle';
-import Input from '../components/Input';
-import Button from '../components/Button';
-import ToastService from '../components/Toast';
+import { formatErrorMessage, formatValidationErrors } from '../../../shared/utils/helpers';
+import { ROUTES } from '../../../app/routes';
+import { usePageTitle } from '../../../shared/hooks/usePageTitle';
+import Input from '../../../shared/components/Input';
+import Button from '../../../shared/components/Button';
+import ToastService from '../../../shared/components/Toast';
 
 const Login = () => {
   const [searchParams] = useSearchParams();

@@ -1,13 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { ProtectedRoute, PublicRoute, PageTransition } from './components/ProtectedRoute';
-import { ToastContainer } from './components/Toast';
-import { ROUTES } from './config/routes';
-import { PageTitle } from './hooks/usePageTitle';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import VerifyEmail from './pages/VerifyEmail';
-import Dashboard from './pages/Dashboard';
+import { AuthProvider, useAuth } from '../features/auth/context/AuthContext';
+import { ProtectedRoute, PublicRoute, PageTransition } from '../shared/components/ProtectedRoute';
+import { ToastContainer } from '../shared/components/Toast';
+import { ROUTES } from './routes';
+import { PageTitle } from '../shared/hooks/usePageTitle';
+import Login from '../features/auth/components/Login';
+import Register from '../features/auth/components/Register';
+import VerifyEmail from '../features/auth/components/VerifyEmail';
+import Dashboard from '../features/dashboard/Dashboard';
 
 function RootRedirect() {
   const { isAuthenticated, loading } = useAuth();
@@ -88,3 +88,4 @@ function App() {
 }
 
 export default App;
+

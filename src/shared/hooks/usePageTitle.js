@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { setPageTitle } from '../config/routes';
+import { setPageTitle } from '../../app/routes';
 
 /**
  * Hook to manage page title based on current route

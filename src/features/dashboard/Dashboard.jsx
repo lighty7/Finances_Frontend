@@ -1,10 +1,10 @@
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../auth/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../utils/constants';
-import { formatCurrency } from '../utils/constants';
-import { usePageTitle } from '../hooks/usePageTitle';
-import Button from '../components/Button';
-import ToastService from '../components/Toast';
+import { ROUTES } from '../../app/routes';
+import { usePageTitle } from '../../shared/hooks/usePageTitle';
+import { formatCurrency } from '../../shared/utils/constants';
+import Button from '../../shared/components/Button';
+import ToastService from '../../shared/components/Toast';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();

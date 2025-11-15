@@ -1,5 +1,5 @@
-import api from './api';
-import { setToken, setUser, removeToken, removeUser } from '../utils/helpers';
+import api from '../../../shared/services/api';
+import { setToken, setUser, removeToken, removeUser } from '../../../shared/utils/helpers';
 
 /**
  * Register a new user

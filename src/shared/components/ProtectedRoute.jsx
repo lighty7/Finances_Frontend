@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { ROUTES, getRouteConfig } from '../config/routes';
+import { useAuth } from '../../features/auth/context/AuthContext';
+import { ROUTES, getRouteConfig } from '../../app/routes';
 import LoadingSpinner from './LoadingSpinner';
 
 /**
@@ -54,3 +54,4 @@ export const PageTransition = ({ children }) => {
     </div>
   );
 };
+
