@@ -8,15 +8,26 @@ import Login from '../features/auth/components/Login';
 import Register from '../features/auth/components/Register';
 import VerifyEmail from '../features/auth/components/VerifyEmail';
 import Dashboard from '../features/dashboard/Dashboard';
+import Configuration from '../features/confiiguration/Configuration';
 
 function RootRedirect() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, isConfigured, configLoading } = useAuth();
   
-  if (loading) {
+  if (loading || configLoading) {
     return null;
   }
   
-  return <Navigate to={isAuthenticated ? ROUTES.DASHBOARD : ROUTES.LOGIN} replace />;
+  if (!isAuthenticated) {
+    return <Navigate to={ROUTES.LOGIN} replace />;
+  }
+  
+  // If authenticated but not configured, route to configuration
+  if (!isConfigured) {
+    return <Navigate to={ROUTES.CONFIGURATION} replace />;
+  }
+  
+  // If authenticated and configured, route to dashboard
+  return <Navigate to={ROUTES.DASHBOARD} replace />;
 }
 
 function App() {
@@ -52,6 +63,16 @@ function App() {
               <PageTransition>
                 <VerifyEmail />
               </PageTransition>
+            }
+          />
+          <Route
+            path={ROUTES.CONFIGURATION}
+            element={
+              <ProtectedRoute>
+                <PageTransition>
+                  <Configuration />
+                </PageTransition>
+              </ProtectedRoute>
             }
           />
           <Route

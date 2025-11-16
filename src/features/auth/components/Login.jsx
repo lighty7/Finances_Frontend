@@ -19,7 +19,7 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, isConfigured } = useAuth();
   const navigate = useNavigate();
   usePageTitle();
 
@@ -59,9 +59,14 @@ const Login = () => {
 
       if (result.success) {
         ToastService.success('Login successful!');
-        // Redirect to returnUrl if provided, otherwise to dashboard
-        const destination = returnUrl ? decodeURIComponent(returnUrl) : ROUTES.DASHBOARD;
-        navigate(destination, { replace: true });
+        // Redirect to returnUrl if provided
+        if (returnUrl) {
+          navigate(decodeURIComponent(returnUrl), { replace: true });
+        } else {
+          // Otherwise, let RootRedirect handle routing based on configuration status
+          // This will route to configuration if not configured, or dashboard if configured
+          navigate('/', { replace: true });
+        }
       } else {
         // Handle email not verified error
         if (result.error?.emailNotVerified) {
