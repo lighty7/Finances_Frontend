@@ -3,11 +3,33 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context/AuthContext';
 import { ROUTES } from '../../app/routes';
 import { usePageTitle } from '../../shared/hooks/usePageTitle';
-import { formatCurrency } from '../../shared/utils/constants';
 import Input from '../../shared/components/Input';
 import Button from '../../shared/components/Button';
 import ToastService from '../../shared/components/Toast';
 import * as configurationService from './services/configuration';
+
+const createEmptyEmiEntry = () => ({ date: '', amount: '' });
+
+const createEmptyLoanEntry = () => ({
+  bankName: '',
+  loanType: '',
+  principal: '',
+  interestRate: '',
+  startDate: '',
+  currentBalance: '',
+  notes: '',
+});
+
+const toInputString = (value) =>
+  value === null || value === undefined ? '' : String(value);
+
+const normalizeErrorPath = (path = '') =>
+  path ? path.replace(/\[(\d+)\]/g, '_$1_').replace(/\./g, '_') : path;
+
+const isLoanEntryEmpty = (loan = {}) =>
+  Object.values(loan).every(
+    (value) => value === '' || value === null || value === undefined
+  );
 
 const Configuration = () => {
   const { user, checkConfiguration } = useAuth();
@@ -17,7 +39,8 @@ const Configuration = () => {
   const [formData, setFormData] = useState({
     totalEmi: '',
     numberOfLoans: '',
-    emiSchedule: [{ date: '', amount: '' }],
+    emiSchedule: [createEmptyEmiEntry()],
+    loans: [createEmptyLoanEntry()],
     income: '',
   });
   const [errors, setErrors] = useState({});
@@ -32,15 +55,26 @@ const Configuration = () => {
         if (response.configuration) {
           const config = response.configuration;
           setFormData({
-            totalEmi: config.totalEmi || '',
-            numberOfLoans: config.numberOfLoans || '',
+            totalEmi: toInputString(config.totalEmi),
+            numberOfLoans: toInputString(config.numberOfLoans),
             emiSchedule: config.emiSchedule && config.emiSchedule.length > 0
               ? config.emiSchedule.map(item => ({
                   date: item.date ? item.date.split('T')[0] : '',
-                  amount: item.amount || '',
+                  amount: toInputString(item.amount),
                 }))
-              : [{ date: '', amount: '' }],
-            income: config.income || '',
+              : [createEmptyEmiEntry()],
+            loans: Array.isArray(config.loans) && config.loans.length > 0
+              ? config.loans.map((loan) => ({
+                  bankName: loan.bankName || '',
+                  loanType: loan.loanType || '',
+                  principal: toInputString(loan.principal),
+                  interestRate: toInputString(loan.interestRate),
+                  startDate: loan.startDate ? loan.startDate.split('T')[0] : '',
+                  currentBalance: toInputString(loan.currentBalance),
+                  notes: loan.notes || '',
+                }))
+              : [createEmptyLoanEntry()],
+            income: toInputString(config.income),
           });
         }
       } catch (error) {
@@ -73,7 +107,7 @@ const Configuration = () => {
   const addEmiScheduleEntry = () => {
     setFormData((prev) => ({
       ...prev,
-      emiSchedule: [...prev.emiSchedule, { date: '', amount: '' }],
+      emiSchedule: [...prev.emiSchedule, createEmptyEmiEntry()],
     }));
   };
 
@@ -84,6 +118,65 @@ const Configuration = () => {
         emiSchedule: prev.emiSchedule.filter((_, i) => i !== index),
       }));
     }
+  };
+
+  const handleLoanChange = (index, field, value) => {
+    setFormData((prev) => {
+      const updatedLoans = [...prev.loans];
+      updatedLoans[index] = { ...updatedLoans[index], [field]: value };
+      return { ...prev, loans: updatedLoans };
+    });
+
+    setErrors((prev) => {
+      const key = `loans_${index}_${field}`;
+      if (!prev[key]) {
+        return prev;
+      }
+      const updated = { ...prev };
+      delete updated[key];
+      return updated;
+    });
+  };
+
+  const addLoanEntry = () => {
+    setFormData((prev) => ({
+      ...prev,
+      loans: [...prev.loans, createEmptyLoanEntry()],
+    }));
+  };
+
+  const removeLoanEntry = (index) => {
+    if (formData.loans.length <= 1) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      loans: prev.loans.filter((_, i) => i !== index),
+    }));
+
+    setErrors((prev) => {
+      const updated = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        const match = key.match(/^loans_(\d+)_(.+)$/);
+        if (!match) {
+          updated[key] = value;
+          return;
+        }
+
+        const errorIndex = parseInt(match[1], 10);
+        const field = match[2];
+
+        if (errorIndex === index) {
+          return;
+        }
+
+        const normalizedIndex = errorIndex > index ? errorIndex - 1 : errorIndex;
+        updated[`loans_${normalizedIndex}_${field}`] = value;
+      });
+
+      return updated;
+    });
   };
 
   const validateForm = () => {
@@ -111,6 +204,43 @@ const Configuration = () => {
       }
     });
 
+    formData.loans.forEach((loan, index) => {
+      if (isLoanEntryEmpty(loan)) {
+        return;
+      }
+
+      if (!loan.bankName.trim()) {
+        newErrors[`loans_${index}_bankName`] = 'Bank name is required';
+      }
+
+      if (!loan.loanType.trim()) {
+        newErrors[`loans_${index}_loanType`] = 'Loan type is required';
+      }
+
+      if (loan.principal !== '' && parseFloat(loan.principal) < 0) {
+        newErrors[`loans_${index}_principal`] = 'Principal must be a non-negative number';
+      }
+
+      if (
+        loan.interestRate !== '' &&
+        (parseFloat(loan.interestRate) < 0 || parseFloat(loan.interestRate) > 100)
+      ) {
+        newErrors[`loans_${index}_interestRate`] = 'Interest rate must be between 0 and 100';
+      }
+
+      if (loan.startDate && !/^\d{4}-\d{2}-\d{2}$/.test(loan.startDate)) {
+        newErrors[`loans_${index}_startDate`] = 'Please enter a valid start date (YYYY-MM-DD)';
+      }
+
+      if (loan.currentBalance !== '' && parseFloat(loan.currentBalance) < 0) {
+        newErrors[`loans_${index}_currentBalance`] = 'Current balance must be a non-negative number';
+      }
+
+      if (loan.notes && loan.notes.length > 500) {
+        newErrors[`loans_${index}_notes`] = 'Notes cannot exceed 500 characters';
+      }
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -123,9 +253,11 @@ const Configuration = () => {
       return;
     }
 
-    // At least income or totalEmi should be provided
-    if (!formData.income && !formData.totalEmi) {
-      ToastService.error('Please provide at least Income or Total EMI');
+    const hasLoanData = formData.loans.some((loan) => !isLoanEntryEmpty(loan));
+
+    // At least income, totalEmi, or loan details should be provided
+    if (!formData.income && !formData.totalEmi && !hasLoanData) {
+      ToastService.error('Please provide Income, Total EMI, or at least one Loan');
       return;
     }
 
@@ -140,10 +272,38 @@ const Configuration = () => {
           amount: parseFloat(item.amount),
         }));
 
+      const loans = formData.loans
+        .map((loan) => {
+          if (isLoanEntryEmpty(loan)) {
+            return null;
+          }
+
+          return {
+            bankName: loan.bankName.trim(),
+            loanType: loan.loanType.trim(),
+            principal:
+              loan.principal !== '' && loan.principal !== null
+                ? parseFloat(loan.principal)
+                : null,
+            interestRate:
+              loan.interestRate !== '' && loan.interestRate !== null
+                ? parseFloat(loan.interestRate)
+                : null,
+            startDate: loan.startDate || null,
+            currentBalance:
+              loan.currentBalance !== '' && loan.currentBalance !== null
+                ? parseFloat(loan.currentBalance)
+                : null,
+            notes: loan.notes ? loan.notes.trim() : null,
+          };
+        })
+        .filter(Boolean);
+
       const configData = {
         totalEmi: formData.totalEmi ? parseFloat(formData.totalEmi) : null,
         numberOfLoans: formData.numberOfLoans ? parseInt(formData.numberOfLoans) : 0,
         emiSchedule: emiSchedule.length > 0 ? emiSchedule : null,
+        loans: loans.length > 0 ? loans : null,
         income: formData.income ? parseFloat(formData.income) : null,
       };
 
@@ -164,7 +324,8 @@ const Configuration = () => {
         const validationErrors = {};
         error.response.data.details.forEach((err) => {
           if (err.path) {
-            validationErrors[err.path] = err.msg;
+            const normalizedPath = normalizeErrorPath(err.path);
+            validationErrors[normalizedPath] = err.msg || err.message || 'Invalid value';
           }
         });
         setErrors(validationErrors);
@@ -184,9 +345,9 @@ const Configuration = () => {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      <header className="bg-gradient-to-r from-primary via-primary to-secondary text-white py-4 shadow-md sticky top-0 z-50">
+      <header className=" from-primary via-primary to-secondary text-white py-4 shadow-md sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 flex justify-between items-center">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-white/90 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold text-white  from-white to-white/90 bg-clip-text ">
             Initial Configuration
           </h1>
           <div className="flex items-center gap-4">
@@ -220,7 +381,7 @@ const Configuration = () => {
               step="0.01"
               min="0"
             />
-
+            
             {/* Total EMI */}
             <Input
               label="Total EMI (All Loans Combined)"
@@ -234,6 +395,7 @@ const Configuration = () => {
               step="0.01"
               min="0"
             />
+            
 
             {/* Number of Loans */}
             <Input
@@ -318,6 +480,141 @@ const Configuration = () => {
                       </Button>
                     )}
                   </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Loans */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <label className="font-medium text-slate-100 text-sm">
+                  Loan Accounts (Optional)
+                </label>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="small"
+                  onClick={addLoanEntry}
+                  disabled={loading}
+                >
+                  Add Loan
+                </Button>
+              </div>
+
+              {formData.loans.map((loan, index) => (
+                <div
+                  key={index}
+                  className="p-4 border border-slate-700 rounded-lg bg-slate-900 space-y-4"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Bank / Lender Name"
+                      name={`loans_${index}_bankName`}
+                      value={loan.bankName}
+                      onChange={(e) => handleLoanChange(index, 'bankName', e.target.value)}
+                      error={errors[`loans_${index}_bankName`]}
+                      placeholder="e.g., ABC Bank"
+                      disabled={loading}
+                    />
+                    <Input
+                      label="Loan Type"
+                      name={`loans_${index}_loanType`}
+                      value={loan.loanType}
+                      onChange={(e) => handleLoanChange(index, 'loanType', e.target.value)}
+                      error={errors[`loans_${index}_loanType`]}
+                      placeholder="e.g., Personal Loan"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input
+                      label="Original Principal"
+                      type="number"
+                      name={`loans_${index}_principal`}
+                      value={loan.principal}
+                      onChange={(e) => handleLoanChange(index, 'principal', e.target.value)}
+                      error={errors[`loans_${index}_principal`]}
+                      placeholder="Enter principal amount"
+                      disabled={loading}
+                      min="0"
+                      step="0.01"
+                    />
+                    <Input
+                      label="Interest Rate (%)"
+                      type="number"
+                      name={`loans_${index}_interestRate`}
+                      value={loan.interestRate}
+                      onChange={(e) => handleLoanChange(index, 'interestRate', e.target.value)}
+                      error={errors[`loans_${index}_interestRate`]}
+                      placeholder="e.g., 12.5"
+                      disabled={loading}
+                      min="0"
+                      max="100"
+                      step="0.01"
+                    />
+                    <Input
+                      label="Start Date"
+                      type="date"
+                      name={`loans_${index}_startDate`}
+                      value={loan.startDate}
+                      onChange={(e) => handleLoanChange(index, 'startDate', e.target.value)}
+                      error={errors[`loans_${index}_startDate`]}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Current Balance"
+                      type="number"
+                      name={`loans_${index}_currentBalance`}
+                      value={loan.currentBalance}
+                      onChange={(e) => handleLoanChange(index, 'currentBalance', e.target.value)}
+                      error={errors[`loans_${index}_currentBalance`]}
+                      placeholder="Remaining balance"
+                      disabled={loading}
+                      min="0"
+                      step="0.01"
+                    />
+                    <div className="flex flex-col gap-2">
+                      <label className="font-medium text-slate-100 text-sm">
+                        Notes
+                      </label>
+                      <textarea
+                        name={`loans_${index}_notes`}
+                        value={loan.notes}
+                        onChange={(e) => handleLoanChange(index, 'notes', e.target.value)}
+                        disabled={loading}
+                        placeholder="Add any additional details"
+                        className={`w-full px-4 py-3 border-2 rounded-lg text-base font-sans transition-all duration-200 bg-slate-800 text-slate-100 border-slate-700 focus:border-primary focus:ring-3 focus:ring-primary/20 ${
+                          errors[`loans_${index}_notes`]
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                            : ''
+                        }`}
+                        rows={3}
+                      />
+                      {errors[`loans_${index}_notes`] && (
+                        <span className="text-red-500 text-sm mt-[-4px]">
+                          {errors[`loans_${index}_notes`]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {formData.loans.length > 1 && (
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="small"
+                        onClick={() => removeLoanEntry(index)}
+                        disabled={loading}
+                      >
+                        Remove Loan
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
